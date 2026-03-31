@@ -155,7 +155,7 @@ export function ChatWidget() {
                 </svg>
               </button>
             </div>
-            <p className="text-xs text-slate-400 mt-1.5 text-center">Powered by Claude AI · No reemplaza a un contador</p>
+            <p className="text-xs text-slate-400 mt-1.5 text-center">Powered by Gemini AI · No reemplaza a un contador</p>
           </div>
         </div>
       )}

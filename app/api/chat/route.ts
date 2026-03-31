@@ -50,22 +50,6 @@ REGLAS DE RESPUESTA:
 5. Máximo 4 párrafos o una lista bien ordenada. Sin relleno.
 6. Si el usuario comete un error conceptual (ej. confunde IVA con impuesto a la renta), corrígelo con amabilidad.`;
 
-// Convierte historial → formato Gemini, inyectando system prompt en primer turno
-function toGeminiContents(messages: { role: string; content: string }[], systemPrompt: string) {
-  const contents = messages.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
-  // Gemma no soporta system_instruction: lo inyectamos al inicio
-  if (contents.length > 0 && contents[0].role === "user") {
-    contents[0] = {
-      role: "user",
-      parts: [{ text: `${systemPrompt}\n\n---\n\n${contents[0].parts[0].text}` }],
-    };
-  }
-  return contents;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -81,11 +65,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "messages requerido" }, { status: 400 });
     }
 
-    // Gemini 2.0 Flash — gratuito, 1500 req/día
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent?key=${apiKey}`;
+    // Gemini 2.0 Flash — gratuito, 1500 req/día, soporta system_instruction nativo
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+    const contents = messages.slice(-10).map((m: { role: string; content: string }) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
 
     const body = {
-      contents: toGeminiContents(messages.slice(-10), SYSTEM_PROMPT),
+      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
       generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
     };
 
