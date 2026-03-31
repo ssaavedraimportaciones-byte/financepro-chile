@@ -105,7 +105,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   queryStr += " RETURNING *";
 
   const result = await pool.query(queryStr, vals);
-  return NextResponse.json(result.rows[0], { status: 201 });
+  return NextResponse.json(result.rows, { status: 201 });
 }
 
 // ---------- PATCH ----------
