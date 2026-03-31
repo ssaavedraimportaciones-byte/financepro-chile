@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
     // Obtener stripe_customer_id desde la DB
     const rows = await sql`
       SELECT s.stripe_customer_id
-      FROM subscripciones s
-      JOIN empresas e ON e.id = s.empresa_id
+      FROM fp_subscripciones s
+      JOIN fp_empresas e ON e.id = s.empresa_id
       WHERE e.user_id = ${user.id}
       LIMIT 1
     `;

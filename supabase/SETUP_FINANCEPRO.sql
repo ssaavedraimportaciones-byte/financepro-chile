@@ -1,23 +1,16 @@
 -- =============================================================
--- FinancePro Chile — Setup completo en Supabase
--- Corre esto en: Supabase Dashboard > SQL Editor > New Query
--- SEGURO: usa IF NOT EXISTS y ADD COLUMN IF NOT EXISTS
---         no rompe tablas existentes de otros proyectos
+-- FinancePro Chile — Setup completo en Neon/PostgreSQL
+-- Corre esto en: Neon Dashboard > SQL Editor
+-- SEGURO: usa CREATE TABLE IF NOT EXISTS y prefijo fp_ en todas
+--         las tablas para no interferir con otras aplicaciones
 -- =============================================================
 
 -- ─────────────────────────────────────────────
--- 1. EXTENDER tabla 'empresas' (ya existe en TransportPro)
---    Solo agrega columnas que FinancePro necesita
+-- 1. Empresa (separada de otras apps con prefijo fp_)
 -- ─────────────────────────────────────────────
-ALTER TABLE IF EXISTS empresas
-  ADD COLUMN IF NOT EXISTS user_id         UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  ADD COLUMN IF NOT EXISTS giro            TEXT,
-  ADD COLUMN IF NOT EXISTS regimen_tributario TEXT DEFAULT 'pro_pyme_general';
-
--- Si la tabla NO existe aún, crearla completa
-CREATE TABLE IF NOT EXISTS empresas (
+CREATE TABLE IF NOT EXISTS fp_empresas (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id             UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id             UUID NOT NULL,
   nombre              TEXT NOT NULL,
   rut                 TEXT,
   giro                TEXT,
@@ -26,34 +19,28 @@ CREATE TABLE IF NOT EXISTS empresas (
 );
 
 -- ─────────────────────────────────────────────
--- 2. EXTENDER tabla 'gastos' (ya existe en TransportPro)
---    Solo agrega columnas de FinancePro
+-- 2. Gastos
 -- ─────────────────────────────────────────────
-ALTER TABLE IF EXISTS gastos
-  ADD COLUMN IF NOT EXISTS monto_iva   NUMERIC(12,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS proyecto_id UUID;
-
--- Si la tabla NO existe aún, crearla
-CREATE TABLE IF NOT EXISTS gastos (
+CREATE TABLE IF NOT EXISTS fp_gastos (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id   UUID REFERENCES empresas(id) ON DELETE CASCADE,
+  empresa_id   UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
   categoria    TEXT NOT NULL,
+  subcategoria TEXT,
   descripcion  TEXT,
   monto        NUMERIC(12,2) NOT NULL DEFAULT 0,
   monto_iva    NUMERIC(12,2) DEFAULT 0,
+  proveedor    TEXT,
   proyecto_id  UUID,
   fecha        DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────────
--- 3. NUEVAS tablas de FinancePro
+-- 3. Proyectos / Centro de costos
 -- ─────────────────────────────────────────────
-
--- Proyectos / Centro de costos
-CREATE TABLE IF NOT EXISTS proyectos (
+CREATE TABLE IF NOT EXISTS fp_proyectos (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id       UUID REFERENCES empresas(id) ON DELETE CASCADE,
+  empresa_id       UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
   nombre           TEXT NOT NULL,
   cliente          TEXT,
   presupuesto      NUMERIC(12,2) DEFAULT 0,
@@ -64,23 +51,29 @@ CREATE TABLE IF NOT EXISTS proyectos (
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ingresos
-CREATE TABLE IF NOT EXISTS ingresos (
+-- ─────────────────────────────────────────────
+-- 4. Ingresos
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fp_ingresos (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id   UUID REFERENCES empresas(id) ON DELETE CASCADE,
-  proyecto_id  UUID REFERENCES proyectos(id) ON DELETE SET NULL,
+  empresa_id   UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
+  proyecto_id  UUID REFERENCES fp_proyectos(id) ON DELETE SET NULL,
   categoria    TEXT NOT NULL,
   descripcion  TEXT,
+  cliente      TEXT,
+  documento    TEXT,
   monto        NUMERIC(12,2) NOT NULL DEFAULT 0,
   monto_iva    NUMERIC(12,2) DEFAULT 0,
   fecha        DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Empleados / nómina
-CREATE TABLE IF NOT EXISTS empleados (
+-- ─────────────────────────────────────────────
+-- 5. Empleados / nómina
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fp_empleados (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id         UUID REFERENCES empresas(id) ON DELETE CASCADE,
+  empresa_id         UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
   nombre             TEXT NOT NULL,
   cargo              TEXT,
   sueldo_bruto       NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -92,10 +85,12 @@ CREATE TABLE IF NOT EXISTS empleados (
   created_at         TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Costos de formalización (notaría, SII, INAPI, etc.)
-CREATE TABLE IF NOT EXISTS costos_formalizacion (
+-- ─────────────────────────────────────────────
+-- 6. Costos de formalización
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fp_costos_formalizacion (
   id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id               UUID REFERENCES empresas(id) ON DELETE CASCADE,
+  empresa_id               UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
   tipo                     TEXT NOT NULL,
   descripcion              TEXT,
   monto                    NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -105,10 +100,12 @@ CREATE TABLE IF NOT EXISTS costos_formalizacion (
   created_at               TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Costos tecnológicos (SaaS, dominios, servidores)
-CREATE TABLE IF NOT EXISTS costos_tecnologicos (
+-- ─────────────────────────────────────────────
+-- 7. Costos tecnológicos (SaaS, dominios, servidores)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fp_costos_tecnologicos (
   id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id               UUID REFERENCES empresas(id) ON DELETE CASCADE,
+  empresa_id               UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
   nombre                   TEXT NOT NULL,
   proveedor                TEXT,
   monto                    NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -121,11 +118,13 @@ CREATE TABLE IF NOT EXISTS costos_tecnologicos (
   created_at               TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Registros tributarios (IVA/PPM mensual)
-CREATE TABLE IF NOT EXISTS registros_tributarios (
+-- ─────────────────────────────────────────────
+-- 8. Registros tributarios (IVA/PPM mensual)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fp_registros_tributarios (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id   UUID REFERENCES empresas(id) ON DELETE CASCADE,
-  periodo      TEXT NOT NULL,       -- formato YYYY-MM
+  empresa_id   UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
+  periodo      TEXT NOT NULL,
   iva_debito   NUMERIC(12,2) DEFAULT 0,
   iva_credito  NUMERIC(12,2) DEFAULT 0,
   iva_pagar    NUMERIC(12,2) DEFAULT 0,
@@ -136,21 +135,25 @@ CREATE TABLE IF NOT EXISTS registros_tributarios (
   UNIQUE (empresa_id, periodo)
 );
 
--- Fondo de emergencia
-CREATE TABLE IF NOT EXISTS fondo_emergencia (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id   UUID REFERENCES empresas(id) ON DELETE CASCADE,
-  monto        NUMERIC(12,2) NOT NULL DEFAULT 0,
-  tipo         TEXT NOT NULL CHECK (tipo IN ('deposito','retiro')),
-  descripcion  TEXT,
-  fecha        DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at   TIMESTAMPTZ DEFAULT NOW()
+-- ─────────────────────────────────────────────
+-- 9. Fondo de emergencia
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fp_fondo_emergencia (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id          UUID REFERENCES fp_empresas(id) ON DELETE CASCADE UNIQUE,
+  porcentaje_ahorro   NUMERIC(5,2) DEFAULT 10,
+  meta                NUMERIC(12,2) DEFAULT 0,
+  monto_acumulado     NUMERIC(12,2) DEFAULT 0,
+  updated_at          TIMESTAMPTZ DEFAULT NOW(),
+  created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Config del fundador (valor hora)
-CREATE TABLE IF NOT EXISTS config_fundador (
+-- ─────────────────────────────────────────────
+-- 10. Config del fundador (valor hora)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fp_config_fundador (
   id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id               UUID REFERENCES empresas(id) ON DELETE CASCADE UNIQUE,
+  empresa_id               UUID REFERENCES fp_empresas(id) ON DELETE CASCADE UNIQUE,
   sueldo_reemplazo         NUMERIC(12,2) DEFAULT 0,
   horas_mensuales          INTEGER DEFAULT 160,
   multiplicador_riesgo     NUMERIC(4,2) DEFAULT 1.5,
@@ -158,10 +161,9 @@ CREATE TABLE IF NOT EXISTS config_fundador (
 );
 
 -- ─────────────────────────────────────────────
--- 4. TABLAS DE SUSCRIPCIONES (SaaS)
+-- 11. Planes y suscripciones
 -- ─────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS planes (
+CREATE TABLE IF NOT EXISTS fp_planes (
   id              TEXT PRIMARY KEY,
   nombre          TEXT NOT NULL,
   precio_mensual  INTEGER NOT NULL,
@@ -172,33 +174,24 @@ CREATE TABLE IF NOT EXISTS planes (
   destacado       BOOLEAN DEFAULT FALSE
 );
 
-CREATE TABLE IF NOT EXISTS subscripciones (
+CREATE TABLE IF NOT EXISTS fp_subscripciones (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id        UUID REFERENCES empresas(id) ON DELETE CASCADE UNIQUE,
-  plan_id           TEXT REFERENCES planes(id),
+  empresa_id        UUID REFERENCES fp_empresas(id) ON DELETE CASCADE UNIQUE,
+  plan_id           TEXT REFERENCES fp_planes(id),
+  plan              TEXT DEFAULT 'trial',
   estado            TEXT NOT NULL DEFAULT 'trial'
                     CHECK (estado IN ('trial','activa','cancelada','vencida','pausada')),
+  stripe_customer_id     TEXT,
+  stripe_subscription_id TEXT,
   fecha_trial_fin   TIMESTAMPTZ,
   fecha_vencimiento TIMESTAMPTZ,
   created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS pagos (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id       UUID REFERENCES empresas(id) ON DELETE CASCADE,
-  subscripcion_id  UUID REFERENCES subscripciones(id),
-  monto            INTEGER NOT NULL,
-  estado           TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente','pagado','fallido','reembolsado')),
-  periodo          TEXT,
-  metodo_pago      TEXT,
-  referencia       TEXT,
-  created_at       TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- ─────────────────────────────────────────────
--- 5. DATOS INICIALES (planes)
+-- 12. Datos iniciales (planes)
 -- ─────────────────────────────────────────────
-INSERT INTO planes (id, nombre, precio_mensual, precio_anual, max_usuarios, max_proyectos, features, destacado)
+INSERT INTO fp_planes (id, nombre, precio_mensual, precio_anual, max_usuarios, max_proyectos, features, destacado)
 VALUES
   ('starter',      'Starter',      19990, 199900,  1,  5,  '["Dashboard financiero","IVA + PPM","Fondo emergencia"]'::jsonb, false),
   ('professional', 'Professional', 39990, 399900,  5, 30,  '["Todo Starter","Capital Humano","OCR","Valor Fundador","Soporte email"]'::jsonb, true),
@@ -206,121 +199,16 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ─────────────────────────────────────────────
--- 6. TRIGGER: Auto-crear trial de 14 días al registrar empresa
+-- 13. Índices para performance
 -- ─────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION crear_trial_subscripcion()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO subscripciones (empresa_id, plan_id, estado, fecha_trial_fin)
-  VALUES (NEW.id, 'professional', 'trial', NOW() + INTERVAL '14 days')
-  ON CONFLICT (empresa_id) DO NOTHING;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS trigger_crear_trial ON empresas;
-CREATE TRIGGER trigger_crear_trial
-  AFTER INSERT ON empresas
-  FOR EACH ROW
-  WHEN (NEW.user_id IS NOT NULL)
-  EXECUTE FUNCTION crear_trial_subscripcion();
+CREATE INDEX IF NOT EXISTS idx_fp_gastos_empresa_fecha     ON fp_gastos(empresa_id, fecha);
+CREATE INDEX IF NOT EXISTS idx_fp_ingresos_empresa_fecha   ON fp_ingresos(empresa_id, fecha);
+CREATE INDEX IF NOT EXISTS idx_fp_proyectos_empresa        ON fp_proyectos(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_fp_empleados_empresa        ON fp_empleados(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_fp_empresas_user_id         ON fp_empresas(user_id);
 
 -- ─────────────────────────────────────────────
--- 7. RLS (Row Level Security)
--- ─────────────────────────────────────────────
-
--- Habilitar RLS en todas las tablas de FinancePro
-ALTER TABLE empresas             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE proyectos            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ingresos             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gastos               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE empleados            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE costos_formalizacion ENABLE ROW LEVEL SECURITY;
-ALTER TABLE costos_tecnologicos  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE registros_tributarios ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fondo_emergencia     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE config_fundador      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE subscripciones       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pagos                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE planes               ENABLE ROW LEVEL SECURITY;
-
--- Empresas: cada usuario ve su propia empresa
-DROP POLICY IF EXISTS "fp_empresas_own" ON empresas;
-CREATE POLICY "fp_empresas_own" ON empresas
-  FOR ALL USING (auth.uid() = user_id);
-
--- Helper function para obtener empresa_id del usuario actual
-CREATE OR REPLACE FUNCTION fp_get_empresa_id()
-RETURNS UUID AS $$
-  SELECT id FROM empresas WHERE user_id = auth.uid() LIMIT 1;
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
-
--- Política genérica para tablas con empresa_id
-DROP POLICY IF EXISTS "fp_proyectos_own" ON proyectos;
-CREATE POLICY "fp_proyectos_own" ON proyectos
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_ingresos_own" ON ingresos;
-CREATE POLICY "fp_ingresos_own" ON ingresos
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_gastos_fp_own" ON gastos;
-CREATE POLICY "fp_gastos_fp_own" ON gastos
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_empleados_own" ON empleados;
-CREATE POLICY "fp_empleados_own" ON empleados
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_formalizacion_own" ON costos_formalizacion;
-CREATE POLICY "fp_formalizacion_own" ON costos_formalizacion
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_tecnologia_own" ON costos_tecnologicos;
-CREATE POLICY "fp_tecnologia_own" ON costos_tecnologicos
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_tributario_own" ON registros_tributarios;
-CREATE POLICY "fp_tributario_own" ON registros_tributarios
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_fondo_own" ON fondo_emergencia;
-CREATE POLICY "fp_fondo_own" ON fondo_emergencia
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_fundador_own" ON config_fundador;
-CREATE POLICY "fp_fundador_own" ON config_fundador
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_sub_own" ON subscripciones;
-CREATE POLICY "fp_sub_own" ON subscripciones
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
-DROP POLICY IF EXISTS "fp_pagos_own" ON pagos;
-CREATE POLICY "fp_pagos_own" ON pagos
-  FOR ALL USING (empresa_id = fp_get_empresa_id());
-
--- Planes: todos pueden leer (público)
-DROP POLICY IF EXISTS "fp_planes_read" ON planes;
-CREATE POLICY "fp_planes_read" ON planes
-  FOR SELECT USING (true);
-
--- ─────────────────────────────────────────────
--- 8. VISTA ADMIN (para el panel /admin)
--- ─────────────────────────────────────────────
-DROP VIEW IF EXISTS admin_empresas_view;
-CREATE VIEW admin_empresas_view AS
-  SELECT
-    e.id, e.nombre, e.rut, e.created_at,
-    s.plan_id, s.estado,
-    s.fecha_trial_fin, s.fecha_vencimiento,
-    p.precio_mensual
-  FROM empresas e
-  LEFT JOIN subscripciones s ON e.id = s.empresa_id
-  LEFT JOIN planes p ON s.plan_id = p.id
-  WHERE e.user_id IS NOT NULL;  -- Solo empresas de FinancePro
-
--- ─────────────────────────────────────────────
--- ¡LISTO! El SQL se ejecutó correctamente.
--- Ahora ve a: https://financepro-chile.vercel.app
+-- ¡LISTO! Tablas creadas con prefijo fp_
+-- Completamente aisladas de TransportPro u otras apps
+-- Ahora ve a configurar tus variables de entorno y lanzar la app
 -- ─────────────────────────────────────────────

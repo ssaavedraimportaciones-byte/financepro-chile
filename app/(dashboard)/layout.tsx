@@ -27,8 +27,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         try {
           const rows = await sql`
             SELECT s.estado, e.bloqueado
-            FROM empresas e
-            LEFT JOIN subscripciones s ON s.empresa_id = e.id
+            FROM fp_empresas e
+            LEFT JOIN fp_subscripciones s ON s.empresa_id = e.id
             WHERE e.id = ${empresaId} LIMIT 1
           `;
           const row = rows[0] as { estado?: string; bloqueado?: boolean } | undefined;

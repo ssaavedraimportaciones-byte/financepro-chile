@@ -15,13 +15,13 @@ export async function GET(req: NextRequest) {
 
   let rows;
   if (periodo && categoria) {
-    rows = await sql`SELECT * FROM gastos WHERE empresa_id = ${empresaId} AND fecha >= ${periodo+"-01"}::date AND fecha <= ${periodo+"-31"}::date AND categoria = ${categoria} ORDER BY fecha DESC`;
+    rows = await sql`SELECT * FROM fp_gastos WHERE empresa_id = ${empresaId} AND fecha >= ${periodo+"-01"}::date AND fecha <= ${periodo+"-31"}::date AND categoria = ${categoria} ORDER BY fecha DESC`;
   } else if (periodo) {
-    rows = await sql`SELECT * FROM gastos WHERE empresa_id = ${empresaId} AND fecha >= ${periodo+"-01"}::date AND fecha <= ${periodo+"-31"}::date ORDER BY fecha DESC`;
+    rows = await sql`SELECT * FROM fp_gastos WHERE empresa_id = ${empresaId} AND fecha >= ${periodo+"-01"}::date AND fecha <= ${periodo+"-31"}::date ORDER BY fecha DESC`;
   } else if (categoria) {
-    rows = await sql`SELECT * FROM gastos WHERE empresa_id = ${empresaId} AND categoria = ${categoria} ORDER BY fecha DESC`;
+    rows = await sql`SELECT * FROM fp_gastos WHERE empresa_id = ${empresaId} AND categoria = ${categoria} ORDER BY fecha DESC`;
   } else {
-    rows = await sql`SELECT * FROM gastos WHERE empresa_id = ${empresaId} ORDER BY fecha DESC`;
+    rows = await sql`SELECT * FROM fp_gastos WHERE empresa_id = ${empresaId} ORDER BY fecha DESC`;
   }
   return NextResponse.json(rows);
 }
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   const rows = await sql`
-    INSERT INTO gastos (empresa_id, descripcion, monto, monto_iva, fecha, categoria, subcategoria, proyecto_id, proveedor)
+    INSERT INTO fp_gastos (empresa_id, descripcion, monto, monto_iva, fecha, categoria, subcategoria, proyecto_id, proveedor)
     VALUES (${empresaId}, ${descripcion}, ${monto}, ${monto_iva}, ${fecha}, ${categoria}, ${subcategoria ?? null}, ${proyecto_id ?? null}, ${proveedor ?? null})
     RETURNING *
   `;
@@ -59,6 +59,6 @@ export async function DELETE(req: NextRequest) {
 
   // Verificar que el gasto pertenece al usuario antes de borrar
   const empresaId = await getEmpresaId(user.id);
-  await sql`DELETE FROM gastos WHERE id = ${id} AND empresa_id = ${empresaId}`;
+  await sql`DELETE FROM fp_gastos WHERE id = ${id} AND empresa_id = ${empresaId}`;
   return NextResponse.json({ ok: true });
 }

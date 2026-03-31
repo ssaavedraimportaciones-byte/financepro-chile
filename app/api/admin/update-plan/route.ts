@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     // ── Bloquear / desbloquear empresa ──
     if (typeof bloqueado === "boolean") {
       await sql`
-        UPDATE empresas SET bloqueado = ${bloqueado} WHERE id = ${empresaId}
+        UPDATE fp_empresas SET bloqueado = ${bloqueado} WHERE id = ${empresaId}
       `;
       return NextResponse.json({ ok: true, empresaId, bloqueado });
     }
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     fechaFin.setMonth(fechaFin.getMonth() + 1);
 
     await sql`
-      INSERT INTO subscripciones (empresa_id, plan, estado, fecha_inicio, fecha_fin)
+      INSERT INTO fp_subscripciones (empresa_id, plan, estado, fecha_inicio, fecha_fin)
       VALUES (${empresaId}, ${plan}, ${estado ?? "activa"}, NOW(), ${fechaFin.toISOString()})
       ON CONFLICT (empresa_id)
       DO UPDATE SET

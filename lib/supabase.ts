@@ -33,7 +33,7 @@ class NeonQueryBuilder implements PromiseLike<DbResult> {
   private _body: any = null;
 
   constructor(table: string) {
-    this._table = table.replace(/^fp_/, "");
+    this._table = table;
   }
 
   select(_cols?: string) {

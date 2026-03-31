@@ -19,7 +19,7 @@ export const pool = new Pool({ connectionString: DATABASE_URL });
 // Helper: obtener empresa_id del usuario autenticado
 export async function getEmpresaId(userId: string): Promise<string | null> {
   const rows = await sql`
-    SELECT id FROM empresas WHERE user_id = ${userId} LIMIT 1
+    SELECT id FROM fp_empresas WHERE user_id = ${userId} LIMIT 1
   `;
   return rows[0]?.id ?? null;
 }
@@ -29,7 +29,7 @@ export async function getOrCreateEmpresa(userId: string, nombre = "Mi Empresa"):
   let empresaId = await getEmpresaId(userId);
   if (!empresaId) {
     const rows = await sql`
-      INSERT INTO empresas (user_id, nombre, rut, regimen_tributario)
+      INSERT INTO fp_empresas (user_id, nombre, rut, regimen_tributario)
       VALUES (${userId}, ${nombre}, '00.000.000-0', 'pro_pyme_general')
       RETURNING id
     `;

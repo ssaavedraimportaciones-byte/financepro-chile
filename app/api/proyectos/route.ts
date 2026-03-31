@@ -10,14 +10,14 @@ export async function GET() {
   const empresaId = await getEmpresaId(user.id);
   if (!empresaId) return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
 
-  const proyectos = await sql`SELECT * FROM proyectos WHERE empresa_id = ${empresaId}`;
+  const proyectos = await sql`SELECT * FROM fp_proyectos WHERE empresa_id = ${empresaId}`;
   if (!proyectos.length) return NextResponse.json([]);
 
   // Calcular rentabilidad para cada proyecto
   const resultado = await Promise.all(proyectos.map(async (p) => {
     const [ing, gas] = await Promise.all([
-      sql`SELECT COALESCE(SUM(monto),0) as total FROM ingresos WHERE proyecto_id = ${p.id}`,
-      sql`SELECT COALESCE(SUM(monto),0) as total FROM gastos WHERE proyecto_id = ${p.id}`,
+      sql`SELECT COALESCE(SUM(monto),0) as total FROM fp_ingresos WHERE proyecto_id = ${p.id}`,
+      sql`SELECT COALESCE(SUM(monto),0) as total FROM fp_gastos WHERE proyecto_id = ${p.id}`,
     ]);
     const ingresos = Number(ing[0]?.total ?? 0);
     const costos = Number(gas[0]?.total ?? 0);
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   const rows = await sql`
-    INSERT INTO proyectos (empresa_id, nombre, cliente, fecha_inicio, fecha_fin, estado, presupuesto)
+    INSERT INTO fp_proyectos (empresa_id, nombre, cliente, fecha_inicio, fecha_fin, estado, presupuesto)
     VALUES (${empresaId}, ${nombre}, ${cliente ?? null}, ${fecha_inicio}, ${fecha_fin ?? null}, ${estado}, ${presupuesto ?? null})
     RETURNING *
   `;

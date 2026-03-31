@@ -12,11 +12,11 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { pool, getEmpresaId } from "@/lib/db";
 import { checkLimit, type Recurso } from "@/lib/plan-limits";
 
-// Solo estas tablas son accesibles via este endpoint
+// Solo estas tablas son accesibles via este endpoint (prefijo fp_ para aislar de otras apps)
 const ALLOWED_TABLES = new Set([
-  "empresas", "proyectos", "ingresos", "gastos", "empleados",
-  "costos_formalizacion", "costos_tecnologicos", "registros_tributarios",
-  "fondo_emergencia", "config_fundador", "subscripciones",
+  "fp_empresas", "fp_proyectos", "fp_ingresos", "fp_gastos", "fp_empleados",
+  "fp_costos_formalizacion", "fp_costos_tecnologicos", "fp_registros_tributarios",
+  "fp_fondo_emergencia", "fp_config_fundador", "fp_subscripciones",
 ]);
 
 // Validar nombre de columna (solo letras, números, guion bajo)
@@ -26,7 +26,7 @@ type Params = { params: { table: string } };
 
 // ---------- GET ----------
 export async function GET(req: NextRequest, { params }: Params) {
-  const table = params.table.replace(/^fp_/, ""); // strip fp_ prefix if present
+  const table = params.table;
   if (!ALLOWED_TABLES.has(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 403 });
 
   const auth = await getAuth(req);
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
 // ---------- POST ----------
 export async function POST(req: NextRequest, { params }: Params) {
-  const table = params.table.replace(/^fp_/, "");
+  const table = params.table;
   if (!ALLOWED_TABLES.has(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 403 });
 
   const auth = await getAuth(req);
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { userId, empresaId } = auth;
 
   // Verificar límites del plan para proyectos y empleados
-  const RECURSOS_LIMITADOS: Set<string> = new Set(["proyectos", "empleados"]);
+  const RECURSOS_LIMITADOS: Set<string> = new Set(["fp_proyectos", "fp_empleados"]);
   if (RECURSOS_LIMITADOS.has(table) && empresaId) {
     try {
       const { permitido, max, actual } = await checkLimit(empresaId, table as Recurso);
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body = await req.json();
 
   // Inyectar user_id o empresa_id automáticamente
-  if (table === "empresas") {
+  if (table === "fp_empresas") {
     body.user_id = userId;
   } else if (empresaId) {
     body.empresa_id = empresaId;
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
 // ---------- PATCH ----------
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const table = params.table.replace(/^fp_/, "");
+  const table = params.table;
   if (!ALLOWED_TABLES.has(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 403 });
 
   const auth = await getAuth(req);
@@ -135,7 +135,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 // ---------- DELETE ----------
 export async function DELETE(req: NextRequest, { params }: Params) {
-  const table = params.table.replace(/^fp_/, "");
+  const table = params.table;
   if (!ALLOWED_TABLES.has(table)) return NextResponse.json({ error: "Tabla no permitida" }, { status: 403 });
 
   const auth = await getAuth(req);
@@ -175,7 +175,7 @@ function buildWhere(
   let idx = offset + 1;
 
   // Security: scope automáticamente
-  if (table === "empresas") {
+  if (table === "fp_empresas") {
     conditions.push(`user_id = $${idx++}`);
     values.push(userId);
   } else if (empresaId) {

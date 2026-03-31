@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
         s.plan,
         s.fecha_fin,
         (s.fecha_fin::date - CURRENT_DATE) AS dias_restantes
-      FROM subscripciones s
-      JOIN empresas e ON e.id = s.empresa_id
+      FROM fp_subscripciones s
+      JOIN fp_empresas e ON e.id = s.empresa_id
       WHERE s.estado = 'trial'
         AND s.fecha_fin IS NOT NULL
         AND (s.fecha_fin::date - CURRENT_DATE) IN (3, 1, 0)

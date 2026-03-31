@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
   const empresas = await sql`
     SELECT e.id, e.nombre, e.rut, e.created_at, e.bloqueado,
            s.plan, s.estado, s.fecha_fin, s.monto AS monto_plan
-    FROM empresas e
-    LEFT JOIN subscripciones s ON s.empresa_id = e.id
+    FROM fp_empresas e
+    LEFT JOIN fp_subscripciones s ON s.empresa_id = e.id
     ORDER BY e.created_at DESC
   `;
 

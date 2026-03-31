@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   let rows;
   if (periodo) {
     rows = await sql`
-      SELECT * FROM ingresos
+      SELECT * FROM fp_ingresos
       WHERE empresa_id = ${empresaId}
         AND fecha >= ${periodo + "-01"}::date
         AND fecha <= ${periodo + "-31"}::date
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     `;
   } else {
     rows = await sql`
-      SELECT * FROM ingresos WHERE empresa_id = ${empresaId} ORDER BY fecha DESC
+      SELECT * FROM fp_ingresos WHERE empresa_id = ${empresaId} ORDER BY fecha DESC
     `;
   }
   return NextResponse.json(rows);
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   const rows = await sql`
-    INSERT INTO ingresos (empresa_id, descripcion, monto, monto_iva, fecha, categoria, proyecto_id, cliente, documento)
+    INSERT INTO fp_ingresos (empresa_id, descripcion, monto, monto_iva, fecha, categoria, proyecto_id, cliente, documento)
     VALUES (${empresaId}, ${descripcion}, ${monto}, ${monto_iva}, ${fecha}, ${categoria}, ${proyecto_id ?? null}, ${cliente ?? null}, ${documento ?? null})
     RETURNING *
   `;

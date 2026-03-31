@@ -11,7 +11,7 @@ export async function GET() {
   const empresaId = await getEmpresaId(user.id);
   if (!empresaId) return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
 
-  const rows = await sql`SELECT * FROM config_fundador WHERE empresa_id = ${empresaId} LIMIT 1`;
+  const rows = await sql`SELECT * FROM fp_config_fundador WHERE empresa_id = ${empresaId} LIMIT 1`;
   if (!rows.length) return NextResponse.json({ error: "Config no encontrada" }, { status: 404 });
 
   const config = rows[0];

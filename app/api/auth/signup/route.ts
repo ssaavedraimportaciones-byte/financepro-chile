@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     // Step 2: Crear empresa en Neon (DB independiente de FinancePro)
     try {
       const rows = await sql`
-        INSERT INTO empresas (user_id, nombre, rut, giro, regimen_tributario)
+        INSERT INTO fp_empresas (user_id, nombre, rut, giro, regimen_tributario)
         VALUES (
           ${authData.user.id},
           ${String(nombre).trim()},
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       fechaFin.setDate(fechaFin.getDate() + 14);
       try {
         await sql`
-          INSERT INTO subscripciones (empresa_id, plan, estado, monto, fecha_inicio, fecha_fin)
+          INSERT INTO fp_subscripciones (empresa_id, plan, estado, monto, fecha_inicio, fecha_fin)
           VALUES (${empresaId}, 'professional', 'trial', 0, NOW(), ${fechaFin.toISOString()})
           ON CONFLICT (empresa_id) DO NOTHING
         `;

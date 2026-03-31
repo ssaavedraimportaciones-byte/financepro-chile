@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
       // Actualizar o crear registro de suscripción
       await sql`
-        INSERT INTO subscripciones (empresa_id, plan, estado, fecha_inicio, fecha_fin, stripe_customer_id, stripe_subscription_id)
+        INSERT INTO fp_subscripciones (empresa_id, plan, estado, fecha_inicio, fecha_fin, stripe_customer_id, stripe_subscription_id)
         VALUES (${empresaId}, ${plan}, 'activa', NOW(), ${fechaFin.toISOString()}, ${customerId}, ${subscriptionId})
         ON CONFLICT (empresa_id)
         DO UPDATE SET
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     const empresaId = sub.metadata?.empresa_id;
     if (empresaId) {
       await sql`
-        UPDATE subscripciones SET estado = 'cancelada', updated_at = NOW()
+        UPDATE fp_subscripciones SET estado = 'cancelada', updated_at = NOW()
         WHERE empresa_id = ${empresaId}
 
       `;
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     const subId    = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
     if (subId) {
       await sql`
-        UPDATE subscripciones SET estado = 'vencida', updated_at = NOW()
+        UPDATE fp_subscripciones SET estado = 'vencida', updated_at = NOW()
         WHERE stripe_subscription_id = ${subId}
       `;
     }
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
       const nuevaFechaFin = new Date();
       nuevaFechaFin.setMonth(nuevaFechaFin.getMonth() + 1);
       await sql`
-        UPDATE subscripciones
+        UPDATE fp_subscripciones
         SET estado = 'activa', fecha_fin = ${nuevaFechaFin.toISOString()}, updated_at = NOW()
         WHERE stripe_subscription_id = ${subId}
       `;
