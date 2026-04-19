@@ -18,11 +18,12 @@ interface Empleado {
   nombre: string;
   rut: string;
   cargo: string;
-  tipo: string;
+  tipo: string;        // 'contrato' | 'honorarios'
   sueldo_bruto: number;
   afp: string;
-  salud: string;
+  salud: string;       // 'fonasa' | 'isapre'
   monto_salud: number;
+  activo: boolean;
 }
 
 export default function CapitalHumanoPage() {

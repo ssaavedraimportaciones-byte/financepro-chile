@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS fp_empresas (
   rut                 TEXT,
   giro                TEXT,
   regimen_tributario  TEXT DEFAULT 'pro_pyme_general',
+  bloqueado           BOOLEAN DEFAULT FALSE,
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -72,17 +73,19 @@ CREATE TABLE IF NOT EXISTS fp_ingresos (
 -- 5. Empleados / nómina
 -- ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS fp_empleados (
-  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id         UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
-  nombre             TEXT NOT NULL,
-  cargo              TEXT,
-  sueldo_bruto       NUMERIC(12,2) NOT NULL DEFAULT 0,
-  tipo_contrato      TEXT DEFAULT 'indefinido',
-  tipo_salud         TEXT DEFAULT 'fonasa',
-  monto_isapre       NUMERIC(12,2) DEFAULT 0,
-  fecha_ingreso      DATE,
-  activo             BOOLEAN DEFAULT TRUE,
-  created_at         TIMESTAMPTZ DEFAULT NOW()
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id   UUID REFERENCES fp_empresas(id) ON DELETE CASCADE,
+  nombre       TEXT NOT NULL,
+  rut          TEXT,
+  cargo        TEXT,
+  tipo         TEXT DEFAULT 'contrato',
+  sueldo_bruto NUMERIC(12,2) NOT NULL DEFAULT 0,
+  afp          TEXT DEFAULT 'Habitat',
+  salud        TEXT DEFAULT 'fonasa',
+  monto_salud  NUMERIC(12,2) DEFAULT 0,
+  fecha_ingreso DATE,
+  activo       BOOLEAN DEFAULT TRUE,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────────

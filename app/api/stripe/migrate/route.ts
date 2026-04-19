@@ -12,12 +12,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   try {
-    await sql`ALTER TABLE subscripciones ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`;
-    await sql`ALTER TABLE subscripciones ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT`;
-    await sql`ALTER TABLE subscripciones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`;
-    await sql`CREATE UNIQUE INDEX IF NOT EXISTS subscripciones_empresa_id_key ON subscripciones (empresa_id)`;
+    await sql`ALTER TABLE fp_subscripciones ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`;
+    await sql`ALTER TABLE fp_subscripciones ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT`;
+    await sql`ALTER TABLE fp_subscripciones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS fp_subscripciones_empresa_id_key ON fp_subscripciones (empresa_id)`;
     // Columna para bloquear empresas por no pago
-    await sql`ALTER TABLE empresas ADD COLUMN IF NOT EXISTS bloqueado BOOLEAN DEFAULT FALSE`;
+    await sql`ALTER TABLE fp_empresas ADD COLUMN IF NOT EXISTS bloqueado BOOLEAN DEFAULT FALSE`;
     return NextResponse.json({ ok: true, message: "Migración completada ✓" });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

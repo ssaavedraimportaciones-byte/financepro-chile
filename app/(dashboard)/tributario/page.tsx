@@ -59,6 +59,7 @@ export default function TributarioPage() {
       periodo: form.periodo,
       iva_debito: calIVA.iva_debito,
       iva_credito: calIVA.iva_credito,
+      iva_pagar: calIVA.iva_neto,
       ppm: calPPM.ppm_calculado,
       pagado: form.pagado,
     };
