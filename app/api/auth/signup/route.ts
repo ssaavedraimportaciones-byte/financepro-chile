@@ -61,12 +61,12 @@ export async function POST(request: Request) {
       const empresaId = rows[0]?.id as string;
 
       // Step 3: Crear registro de suscripción en trial (14 días)
-      const fechaFin = new Date();
-      fechaFin.setDate(fechaFin.getDate() + 14);
+      const fechaTrialFin = new Date();
+      fechaTrialFin.setDate(fechaTrialFin.getDate() + 14);
       try {
         await sql`
-          INSERT INTO fp_subscripciones (empresa_id, plan, estado, monto, fecha_inicio, fecha_fin)
-          VALUES (${empresaId}, 'professional', 'trial', 0, NOW(), ${fechaFin.toISOString()})
+          INSERT INTO fp_subscripciones (empresa_id, plan, estado, fecha_trial_fin)
+          VALUES (${empresaId}, 'professional', 'trial', ${fechaTrialFin.toISOString()})
           ON CONFLICT (empresa_id) DO NOTHING
         `;
       } catch { /* no bloquear si ya existe */ }
