@@ -24,16 +24,13 @@ export async function getEmpresaId(userId: string): Promise<string | null> {
   return rows[0]?.id ?? null;
 }
 
-// Helper: obtener o crear empresa del usuario
+// Helper: obtener o crear empresa del usuario (atómico — safe bajo concurrencia)
 export async function getOrCreateEmpresa(userId: string, nombre = "Mi Empresa"): Promise<string> {
-  let empresaId = await getEmpresaId(userId);
-  if (!empresaId) {
-    const rows = await sql`
-      INSERT INTO fp_empresas (user_id, nombre, rut, regimen_tributario)
-      VALUES (${userId}, ${nombre}, '00.000.000-0', 'pro_pyme_general')
-      RETURNING id
-    `;
-    empresaId = rows[0].id;
-  }
-  return empresaId;
+  await sql`
+    INSERT INTO fp_empresas (user_id, nombre, rut, regimen_tributario)
+    VALUES (${userId}, ${nombre}, '00.000.000-0', 'pro_pyme_general')
+    ON CONFLICT (user_id) DO NOTHING
+  `;
+  const rows = await sql`SELECT id FROM fp_empresas WHERE user_id = ${userId} LIMIT 1`;
+  return rows[0].id;
 }

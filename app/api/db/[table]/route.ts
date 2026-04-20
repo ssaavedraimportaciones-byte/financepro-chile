@@ -33,6 +33,10 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { userId, empresaId } = auth;
 
+  if (!empresaId && table !== "fp_empresas") {
+    return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
+  }
+
   const sp = req.nextUrl.searchParams;
   const isSingle = sp.get("_single") === "1";
 
@@ -64,6 +68,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   const auth = await getAuth(req);
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { userId, empresaId } = auth;
+
+  if (!empresaId && table !== "fp_empresas") {
+    return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
+  }
 
   // Verificar límites del plan para proyectos y empleados
   const RECURSOS_LIMITADOS: Set<string> = new Set(["fp_proyectos", "fp_empleados"]);
@@ -117,6 +125,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { userId, empresaId } = auth;
 
+  if (!empresaId && table !== "fp_empresas") {
+    return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
+  }
+
   const body = await req.json();
   const sp = req.nextUrl.searchParams;
 
@@ -141,6 +153,10 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const auth = await getAuth(req);
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { userId, empresaId } = auth;
+
+  if (!empresaId && table !== "fp_empresas") {
+    return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
+  }
 
   const sp = req.nextUrl.searchParams;
   const { whereClause, values } = buildWhere(table, userId, empresaId ?? "", sp);

@@ -10,7 +10,7 @@
 -- ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS fp_empresas (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id             UUID NOT NULL,
+  user_id             UUID NOT NULL UNIQUE,
   nombre              TEXT NOT NULL,
   rut                 TEXT,
   giro                TEXT,
@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS fp_empresas (
   bloqueado           BOOLEAN DEFAULT FALSE,
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );
+-- Un usuario = una empresa, garantizado a nivel DB
+CREATE UNIQUE INDEX IF NOT EXISTS fp_empresas_user_id_key ON fp_empresas (user_id);
 
 -- ─────────────────────────────────────────────
 -- 2. Gastos
