@@ -15,14 +15,33 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const sig     = req.headers.get("stripe-signature") ?? "";
-  const secret  = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+  const secret  = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!secret) {
+    console.error("[webhook] STRIPE_WEBHOOK_SECRET not configured");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+  }
 
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, secret);
   } catch (err) {
-    console.error("[webhook] Firma inválida:", err);
-    return NextResponse.json({ error: "Firma inválida" }, { status: 400 });
+    console.error("[webhook] Invalid signature:", err);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // Idempotency check: prevent duplicate processing of the same webhook event
+  try {
+    const existingEvent = await sql`SELECT id FROM fp_webhook_events WHERE stripe_event_id = ${event.id}`;
+    if (existingEvent.length > 0) {
+      console.log(`[webhook] Event ${event.id} already processed (idempotent)`);
+      return NextResponse.json({ ok: true });
+    }
+    // Record this event as processed
+    await sql`INSERT INTO fp_webhook_events (stripe_event_id, event_type, processed_at) VALUES (${event.id}, ${event.type}, NOW())`;
+  } catch (idempotencyErr) {
+    console.warn("[webhook] Idempotency check failed:", idempotencyErr);
+    // Continue processing even if idempotency tracking fails
   }
 
   // ──────────────────────────────────────────────────────────
@@ -47,17 +66,15 @@ export async function POST(req: NextRequest) {
 
       // Actualizar o crear registro de suscripción
       await sql`
-        INSERT INTO fp_subscripciones (empresa_id, plan, estado, fecha_inicio, fecha_fin, stripe_customer_id, stripe_subscription_id)
-        VALUES (${empresaId}, ${plan}, 'activa', NOW(), ${fechaFin.toISOString()}, ${customerId}, ${subscriptionId})
+        INSERT INTO fp_subscripciones (empresa_id, plan, estado, fecha_vencimiento, stripe_customer_id, stripe_subscription_id)
+        VALUES (${empresaId}, ${plan}, 'activa', ${fechaFin.toISOString()}, ${customerId}, ${subscriptionId})
         ON CONFLICT (empresa_id)
         DO UPDATE SET
           plan                    = ${plan},
           estado                  = 'activa',
-          fecha_inicio            = NOW(),
-          fecha_fin               = ${fechaFin.toISOString()},
+          fecha_vencimiento       = ${fechaFin.toISOString()},
           stripe_customer_id      = ${customerId},
-          stripe_subscription_id  = ${subscriptionId},
-          updated_at              = NOW()
+          stripe_subscription_id  = ${subscriptionId}
       `;
 
       // Email del usuario: Stripe lo incluye en customer_details (más simple que la unión con auth)
@@ -115,7 +132,7 @@ export async function POST(req: NextRequest) {
       nuevaFechaFin.setMonth(nuevaFechaFin.getMonth() + 1);
       await sql`
         UPDATE fp_subscripciones
-        SET estado = 'activa', fecha_fin = ${nuevaFechaFin.toISOString()}, updated_at = NOW()
+        SET estado = 'activa', fecha_vencimiento = ${nuevaFechaFin.toISOString()}
         WHERE stripe_subscription_id = ${subId}
       `;
     }

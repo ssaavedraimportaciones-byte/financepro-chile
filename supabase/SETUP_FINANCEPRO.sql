@@ -194,6 +194,18 @@ CREATE TABLE IF NOT EXISTS fp_subscripciones (
 );
 
 -- ─────────────────────────────────────────────
+-- 11b. Webhook Events (idempotency tracking)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS fp_webhook_events (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stripe_event_id  TEXT NOT NULL UNIQUE,
+  event_type       TEXT NOT NULL,
+  processed_at     TIMESTAMPTZ NOT NULL,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_fp_webhook_events_stripe_id ON fp_webhook_events(stripe_event_id);
+
+-- ─────────────────────────────────────────────
 -- 12. Datos iniciales (planes)
 -- ─────────────────────────────────────────────
 INSERT INTO fp_planes (id, nombre, precio_mensual, precio_anual, max_usuarios, max_proyectos, features, destacado)

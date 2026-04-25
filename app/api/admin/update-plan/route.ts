@@ -42,13 +42,13 @@ export async function POST(req: NextRequest) {
       const addDias = dias ?? 14;
       await sql`
         INSERT INTO fp_subscripciones (empresa_id, plan, estado, fecha_trial_fin)
-        VALUES (${empresaId}, 'professional', 'trial', NOW() + (${addDias} || ' days')::interval)
+        VALUES (${empresaId}, 'professional', 'trial', NOW() + (${addDias}::text || ' days')::interval)
         ON CONFLICT (empresa_id) DO UPDATE SET
           estado          = 'trial',
           fecha_trial_fin = GREATEST(
             COALESCE(fp_subscripciones.fecha_trial_fin, NOW()),
             NOW()
-          ) + (${addDias} || ' days')::interval
+          ) + (${addDias}::text || ' days')::interval
       `;
       return NextResponse.json({ ok: true, empresaId, extendedDays: addDias });
     }
