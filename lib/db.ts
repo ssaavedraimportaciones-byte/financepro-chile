@@ -7,14 +7,14 @@ import { neon, Pool } from "@neondatabase/serverless";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
-if (!DATABASE_URL) {
-  throw new Error("DATABASE_URL no definida. Agrega la variable de entorno de Neon.");
-}
+// Lazy-initialized: only throws at runtime when a query is made, not at build time
+export const sql = DATABASE_URL
+  ? neon(DATABASE_URL)
+  : (() => { throw new Error("DATABASE_URL no definida."); }) as ReturnType<typeof neon>;
 
-export const sql = neon(DATABASE_URL);
-
-// Pool para queries dinámicas (generic API route)
-export const pool = new Pool({ connectionString: DATABASE_URL });
+export const pool = DATABASE_URL
+  ? new Pool({ connectionString: DATABASE_URL })
+  : null as unknown as Pool;
 
 // Helper: obtener empresa_id del usuario autenticado
 export async function getEmpresaId(userId: string): Promise<string | null> {
